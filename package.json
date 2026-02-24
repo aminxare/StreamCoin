@@ -1,5 +1,12 @@
 {
-  "name": "real-time-crypto",
+  "name": "streamcoin",
+  "author": "AminXare",
+  "license": "MIT",
+  "description": "Crypto Currency Screener App",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AminXare/StreamCoin"
+  },
   "version": "0.1.0",
   "private": true,
   "scripts": {
