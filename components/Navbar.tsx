@@ -40,7 +40,7 @@ function AccountDropdown() {
 
 const Navbar = () => {
   return (
-    <div className="mx-auto border border-white/20 shadow-sm shadow-white/20 p-4 flex justify-between items-center">
+    <div className="mx-auto border border-white/20 px-6 py-4 flex justify-between items-center">
       {/* links */}
       <div className="flex gap-4 items-center">
         <h1 className="text-2xl font-bold">StreamCoin</h1>
