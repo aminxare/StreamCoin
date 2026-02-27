@@ -41,7 +41,7 @@ export default function CryptoMarketOverview() {
     else setLoading(true);
     setError(null);
     try {
-      const coinsData = await fetchCoins(1, 100);
+      const coinsData = await fetchCoins(1, 10);
       setCoins(coinsData);
       setLastUpdated(new Date());
     } catch (err) {
@@ -83,6 +83,16 @@ export default function CryptoMarketOverview() {
     setSearch(e.target.value);
   };
 
+  const handleSort = (key: keyof Coin | null) => () => {
+    if (!key) return;
+    if (sortBy === key) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDirection("desc");
+    }
+  };
+
   return (
     <>
       {error ? (
@@ -116,26 +126,44 @@ export default function CryptoMarketOverview() {
             <Table className="w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead
-                    className="max-w-2 w-1/4"
-                    onClick={() => console.log("Coin")}
-                  >
-                    Coin
-                  </TableHead>
-                  <TableHead className="text-right max-w-2">Price</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell min-w-20">
-                    24h Change
-                  </TableHead>
-                  <TableHead className="text-right hidden md:table-cell min-w-28">
-                    Market Cap
-                  </TableHead>
-                  <TableHead className="text-right hidden lg:table-cell min-w-28">
-                    24h Volume
-                  </TableHead>
-                  <TableHead className="text-right hidden xl:table-cell min-w-24">
-                    Last 7d
-                  </TableHead>
+                  {[
+                    { label: "#", sortable: false, key: null },
+                    { label: "Coin", sortable: false, key: "name" },
+                    { label: "Price", sortable: true, key: "current_price" },
+                    {
+                      label: "24h Change",
+                      sortable: true,
+                      key: "price_change_percentage_24h",
+                    },
+                    {
+                      label: "Market Cap",
+                      sortable: true,
+                      key: "market_cap",
+                    },
+                    {
+                      label: "24h Volume",
+                      sortable: true,
+                      key: "total_volume",
+                    },
+                    { label: "Last 7d", sortable: false, key: null },
+                  ].map((col) => (
+                    <TableHead
+                      key={col.label}
+                      className={`${ 
+                        col.sortable ? "cursor-pointer" : ""
+                      } text-right font-medium ${
+                        col.key === "name" ? "text-left" : ""
+                      }`}
+                      onClick={handleSort(col.key as keyof Coin | null)}
+                    >
+                      {col.label}
+                      {col.sortable && sortBy === col.key && (
+                        <span className="ml-1 text-xs">
+                          {sortDirection === "asc" ? "▲" : "▼"}
+                        </span>
+                      )}
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
