@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import {
   Card,
@@ -19,17 +21,67 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SparklineCell } from "../components/sparkline-cell";
 import { fetchCoins, formatCurrency } from "@/lib/coingecko";
 import { Coin } from "@/type";
+import { Input } from "./ui/input";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "./ui/button";
 
-export default async function CryptoMarketOverview() {
-  let coins: Coin[] = [];
-  let error: string | null = null;
+export default function CryptoMarketOverview() {
+  const [coins, setCoins] = useState<Coin[]>([]);
+  const [filteredCoins, setFilteredCoins] = useState<Coin[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<keyof Coin>("market_cap");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  try {
-    coins = await fetchCoins();
-  } catch (err) {
-    console.error("Error fetching coins:", err);
-    error = (err as Error).message;
-  }
+  const loadCoins = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const coinsData = await fetchCoins(1, 100);
+      setCoins(coinsData);
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError((err as Error).message || "Failed to load coins");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCoins();
+    const interval = setInterval(() => loadCoins(true), 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loadCoins]);
+
+  useEffect(() => {
+    let filtered = [...coins];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(
+        (coin) =>
+          coin.name.toLowerCase().includes(q) ||
+          coin.symbol.toLowerCase().includes(q),
+      );
+    }
+    filtered.sort((a, b) => {
+      const aValue = a[sortBy] ?? 0;
+      const bValue = b[sortBy] ?? 0;
+
+      return sortDirection === "asc"
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number);
+    });
+    setFilteredCoins(filtered);
+  }, [coins, search, sortBy, sortDirection]);
+
+  const searchHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  };
 
   return (
     <>
@@ -40,19 +92,37 @@ export default async function CryptoMarketOverview() {
             <CardDescription>{error}</CardDescription>
           </CardHeader>
         </Card>
-      ) : coins.length === 0 ? (
+      ) : coins.length === 0 && loading ? (
         <div className="space-y-4">
           <Skeleton className="h-1 w-full" />
           <Skeleton className="h-6 w-full" />
         </div>
       ) : (
         <Card className="overflow-hidden">
-          <CardContent className="overflow-x-auto">
+          <CardHeader>
+            <CardTitle>Market Overview</CardTitle>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {lastUpdated && (
+                <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
+              )}
+              {refreshing && <span>Refreshing...</span>}
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <Input placeholder="Search coins" onChange={searchHandler} />
+              <Button onClick={() => loadCoins(true)}>Refresh</Button>
+            </div>
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-2">
             <Table className="w-full">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10"></TableHead>
-                  <TableHead className="max-w-2 w-1/4">Coin</TableHead>
+                  <TableHead
+                    className="max-w-2 w-1/4"
+                    onClick={() => console.log("Coin")}
+                  >
+                    Coin
+                  </TableHead>
                   <TableHead className="text-right max-w-2">Price</TableHead>
                   <TableHead className="text-right hidden sm:table-cell min-w-20">
                     24h Change
@@ -69,7 +139,7 @@ export default async function CryptoMarketOverview() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {coins.map((coin) => {
+                {filteredCoins.map((coin) => {
                   const isPositive = coin.price_change_percentage_24h >= 0;
                   return (
                     <TableRow key={coin.id} className="hover:bg-muted/50">
