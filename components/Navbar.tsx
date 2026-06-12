@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { LogOut, Search, Settings, User } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 
 function AccountDropdown() {
   return (

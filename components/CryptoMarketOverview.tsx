@@ -22,12 +22,11 @@ import { SparklineCell } from "../components/sparkline-cell";
 import { fetchCoins, formatCurrency } from "@/lib/coingecko";
 import { Coin } from "@/type";
 import { Input } from "./ui/input";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./ui/button";
 
 export default function CryptoMarketOverview() {
   const [coins, setCoins] = useState<Coin[]>([]);
-  const [filteredCoins, setFilteredCoins] = useState<Coin[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -36,7 +35,7 @@ export default function CryptoMarketOverview() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const pageSize = 10;
   const [hasMore, setHasMore] = useState<boolean>(true);
 
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -90,7 +89,10 @@ export default function CryptoMarketOverview() {
   );
 
   useEffect(() => {
-    loadCoins();
+    const timer = setTimeout(() => {
+      loadCoins();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadCoins]);
 
   useEffect(() => {
@@ -112,7 +114,7 @@ export default function CryptoMarketOverview() {
     }
   };
 
-  useEffect(() => {
+  const filteredCoins = useMemo(() => {
     let filtered = [...coins];
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -130,7 +132,7 @@ export default function CryptoMarketOverview() {
         ? (aValue as number) - (bValue as number)
         : (bValue as number) - (aValue as number);
     });
-    setFilteredCoins(filtered);
+    return filtered;
   }, [coins, search, sortBy, sortDirection]);
 
   const searchHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,10 +159,76 @@ export default function CryptoMarketOverview() {
           </CardHeader>
         </Card>
       ) : coins.length === 0 && loading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-1 w-full" />
-          <Skeleton className="h-6 w-full" />
-        </div>
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle>Market Overview</CardTitle>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Skeleton className="h-4 w-32" />
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <Skeleton className="h-10 flex-1 max-w-sm" />
+              <Skeleton className="h-10 w-20" />
+            </div>
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-2">
+            <Table className="w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">#</TableHead>
+                  <TableHead className="text-left font-medium">Coin</TableHead>
+                  <TableHead className="text-right font-medium">Price</TableHead>
+                  <TableHead className="text-right font-medium">24h Change</TableHead>
+                  <TableHead className="text-right font-medium">Market Cap</TableHead>
+                  <TableHead className="text-right font-medium">24h Volume</TableHead>
+                  <TableHead className="min-w-24 text-right">Last 7d</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="w-10">
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                    <TableCell className="font-medium max-w-[12em] w-1/4">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                        <div className="flex flex-col gap-1 w-full">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-12" />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end">
+                        <Skeleton className="h-4 w-16" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end">
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end">
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end">
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        <Skeleton className="h-8 w-24" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       ) : (
         <Card className="overflow-hidden">
           <CardHeader>
