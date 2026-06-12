@@ -22,7 +22,7 @@ import { SparklineCell } from "../components/sparkline-cell";
 import { fetchCoins, formatCurrency } from "@/lib/coingecko";
 import { Coin } from "@/type";
 import { Input } from "./ui/input";
-import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
 
 export default function CryptoMarketOverview() {
@@ -35,28 +35,82 @@ export default function CryptoMarketOverview() {
   const [sortBy, setSortBy] = useState<keyof Coin>("market_cap");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [hasMore, setHasMore] = useState<boolean>(true);
 
-  const loadCoins = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const coinsData = await fetchCoins(1, 10);
-      setCoins(coinsData);
-      setLastUpdated(new Date());
-    } catch (err) {
-      setError((err as Error).message || "Failed to load coins");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  //Intersection Observer for infinite scroll
+  // useEffect(() => {
+  //   if (!observerTarget.current || !hasMore || loading) return;
+  //   const observer = new IntersectionObserver(
+  //     (entries) => {
+  //       if (entries[0].isIntersecting && hasMore && !loading) {
+  //         setPage((prev) => prev + 1);
+  //       }
+  //     },
+  //     { threshold: 0.5 },
+  //   );
+  //   if (observerTarget.current) {
+  //     observer.observe(observerTarget.current);
+  //   }
+  //   return () => observer.disconnect();
+  // }, [hasMore, loading]);
+
+  const loadCoins = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      setError(null);
+
+      try {
+        const coinsData = await fetchCoins(page, pageSize);
+        console.log("coinsData: ", coinsData);
+        setCoins((prev) => {
+          if (isRefresh || page === 1) {
+            return coinsData;
+          }
+          const existingIds = new Set(prev.map((c) => c.id));
+          const filtered = coinsData.filter((c) => !existingIds.has(c.id));
+          return [...prev, ...filtered];
+        });
+        setLastUpdated(new Date());
+        setHasMore(coinsData.length === pageSize);
+      } catch (err) {
+        console.error(err);
+        setError((err as Error).message || "Failed to load coins");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [page, pageSize],
+  );
 
   useEffect(() => {
     loadCoins();
-    const interval = setInterval(() => loadCoins(true), 60 * 1000);
-    return () => clearInterval(interval);
   }, [loadCoins]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (page === 1) {
+        loadCoins(true);
+      } else {
+        setPage(1);
+      }
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loadCoins, page]);
+
+  const handleRefresh = () => {
+    if (page === 1) {
+      loadCoins(true);
+    } else {
+      setPage(1);
+    }
+  };
 
   useEffect(() => {
     let filtered = [...coins];
@@ -119,7 +173,7 @@ export default function CryptoMarketOverview() {
             </div>
             <div className="flex items-center gap-2 mt-4">
               <Input placeholder="Search coins" onChange={searchHandler} />
-              <Button onClick={() => loadCoins(true)}>Refresh</Button>
+              <Button onClick={handleRefresh}>Refresh</Button>
             </div>
           </CardHeader>
           <CardContent className="overflow-x-auto p-2">
@@ -149,7 +203,7 @@ export default function CryptoMarketOverview() {
                   ].map((col) => (
                     <TableHead
                       key={col.label}
-                      className={`${ 
+                      className={`${
                         col.sortable ? "cursor-pointer" : ""
                       } text-right font-medium ${
                         col.key === "name" ? "text-left" : ""
@@ -191,7 +245,7 @@ export default function CryptoMarketOverview() {
                       <TableCell className="text-right font-medium max-w-24 whitespace-nowrap">
                         ${coin.current_price.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right hidden sm:table-cell min-w-20">
+                      <TableCell className="text-right  min-w-20">
                         <Badge
                           variant={isPositive ? "default" : "destructive"}
                           className={
@@ -202,13 +256,13 @@ export default function CryptoMarketOverview() {
                           {coin.price_change_percentage_24h.toFixed(2)}%
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right hidden md:table-cell text-muted-foreground min-w-28">
+                      <TableCell className="text-right text-muted-foreground min-w-28">
                         {formatCurrency(coin.market_cap, true)}
                       </TableCell>
-                      <TableCell className="text-right hidden lg:table-cell text-muted-foreground min-w-28">
+                      <TableCell className="text-right text-muted-foreground min-w-28">
                         {formatCurrency(coin.total_volume, true)}
                       </TableCell>
-                      <TableCell className="hidden xl:table-cell min-w-24">
+                      <TableCell className="min-w-24">
                         <SparklineCell data={coin.sparkline_in_7d?.price} />
                       </TableCell>
                     </TableRow>
@@ -219,10 +273,10 @@ export default function CryptoMarketOverview() {
           </CardContent>
         </Card>
       )}
-
-      <p className="text-xs text-muted-foreground text-center mt-8">
-        Data provided by CoinGecko • Not financial advice
-      </p>
+      <div ref={observerTarget} className="h-1 w-full">
+        {loading && <p className="text-center">Loading more coins...</p>}
+        {!hasMore && <p className="text-center">No more coins</p>}
+      </div>
     </>
   );
 }
