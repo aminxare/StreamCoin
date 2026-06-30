@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -20,27 +19,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SparklineCell } from "../components/sparkline-cell";
-import { fetchCoins, formatCurrency } from "@/lib/coingecko";
+import { formatCurrency } from "@/lib/coingecko";
 import { Coin } from "@/type";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import {
-  ChangeEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  setSearch,
-  setSortBy,
-  setSortDirection,
-  toggleSortDirection,
-} from "@/store/marketSlice";
-
-const pageSize = 10;
+import { useCryptoMarketOverview } from "@/hooks/useCryptoMarketOverview";
 
 type SortableCoinKey =
   | "current_price"
@@ -86,121 +69,6 @@ function getAlignmentClass(align: HeaderConfig["align"]) {
   }
 }
 
-function useCryptoMarketOverview() {
-  const dispatch = useAppDispatch();
-  const { search, sortBy, sortDirection } = useAppSelector(
-    (state) => state.market,
-  );
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const observerTarget = useRef<HTMLDivElement>(null);
-
-  const {
-    data,
-    error,
-    isLoading,
-    isFetching,
-    isFetchingNextPage,
-    fetchNextPage,
-    hasNextPage,
-    refetch,
-  } = useInfiniteQuery<Coin[], Error, InfiniteData<Coin[]>, ["coins"], number>({
-    queryKey: ["coins"],
-    queryFn: ({ pageParam = 1 }) => fetchCoins(pageParam, pageSize),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.length === pageSize ? lastPage.length + 1 : undefined,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-    refetchInterval: 60_000,
-  });
-
-  useEffect(() => {
-    if (!data) return;
-    setLastUpdated(new Date());
-  }, [data]);
-
-  const coins = useMemo(() => data?.pages.flat() ?? [], [data]);
-
-  useEffect(() => {
-    if (!observerTarget.current || !hasNextPage || isFetchingNextPage || isLoading) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          void fetchNextPage();
-        }
-      },
-      { threshold: 0.5 },
-    );
-
-    observer.observe(observerTarget.current);
-    return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isLoading]);
-
-  const filteredCoins = useMemo(() => {
-    const normalizedQuery = search.trim().toLowerCase();
-    const visibleCoins = normalizedQuery
-      ? (coins as Coin[]).filter(
-          (coin) =>
-            coin.name.toLowerCase().includes(normalizedQuery) ||
-            coin.symbol.toLowerCase().includes(normalizedQuery),
-        )
-      : (coins as Coin[]);
-
-    return [...visibleCoins].sort((a, b) => {
-      const aValue = a[sortBy] ?? 0;
-      const bValue = b[sortBy] ?? 0;
-
-      return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-    });
-  }, [coins, search, sortBy, sortDirection]);
-
-  const handleSearchChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      dispatch(setSearch(event.target.value));
-    },
-    [dispatch],
-  );
-
-  const handleSort = useCallback(
-    (key: SortableCoinKey | null) => {
-      if (!key) {
-        return;
-      }
-
-      if (sortBy === key) {
-        dispatch(toggleSortDirection());
-      } else {
-        dispatch(setSortBy(key));
-        dispatch(setSortDirection("desc"));
-      }
-    },
-    [dispatch, sortBy],
-  );
-
-  const handleRefresh = useCallback(() => {
-    void refetch();
-  }, [refetch]);
-
-  return {
-    error,
-    isLoading,
-    isFetching,
-    isFetchingNextPage,
-    lastUpdated,
-    search,
-    filteredCoins,
-    sortBy,
-    sortDirection,
-    hasMore: Boolean(hasNextPage),
-    observerTarget,
-    handleSearchChange,
-    handleSort,
-    handleRefresh,
-  };
-}
 
 function TableSkeleton() {
   return (
