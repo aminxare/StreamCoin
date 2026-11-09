@@ -23,4 +23,24 @@ export const coingeckoAgent = {
 
     return res.json();
   },
+
+  async fetchCoinById(id: string): Promise<Coin | null> {
+    const url = new URL(`${BASE_URL}/coins/markets`);
+    url.searchParams.set("vs_currency", "usd");
+    url.searchParams.set("ids", id);
+    url.searchParams.set("sparkline", "true");
+    url.searchParams.set("price_change_percentage", "24h,7d");
+
+    const res = await fetch(url.toString(), {
+      next: { revalidate: 60 },
+      headers: { Accept: "application/json" },
+    });
+
+    if (!res.ok) {
+      throw new Error(`CoinGecko API error: ${res.status}`);
+    }
+
+    const coins: Coin[] = await res.json();
+    return coins[0] || null;
+  },
 };

@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -157,6 +159,8 @@ function MarketOverviewTable({
   sortDirection: "asc" | "desc";
   onSort: (key: SortableCoinKey | null) => void;
 }) {
+  const router = useRouter();
+
   return (
     <Table className="w-full">
       <TableHeader>
@@ -164,8 +168,8 @@ function MarketOverviewTable({
           {tableHeaders.map((header) => (
             <TableHead
               key={header.label}
-              className={`${getAlignmentClass(header.align)} text-right font-medium ${
-                header.sortable ? "cursor-pointer" : ""
+              className={`${getAlignmentClass(header.align)} font-medium ${
+                header.sortable ? "cursor-pointer select-none" : ""
               }`}
               onClick={header.sortable ? () => onSort(header.key) : undefined}
             >
@@ -184,23 +188,50 @@ function MarketOverviewTable({
           const isPositive = coin.price_change_percentage_24h >= 0;
 
           return (
-            <TableRow key={coin.id} className="hover:bg-muted/50">
+            <TableRow
+              key={coin.id}
+              className="hover:bg-muted/60 cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-muted/80"
+              onClick={() => router.push(`/coin/${coin.id}`)}
+              tabIndex={0}
+              role="link"
+              aria-label={`View ${coin.name} details`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  router.push(`/coin/${coin.id}`);
+                }
+              }}
+            >
               <TableCell className="w-10">
-                <Image
-                  src={coin.image}
-                  alt={coin.name}
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                />
+                <Link
+                  href={`/coin/${coin.id}`}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  className="block shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Image
+                    src={coin.image}
+                    alt={coin.name}
+                    width={32}
+                    height={32}
+                    className="rounded-full shrink-0"
+                  />
+                </Link>
               </TableCell>
               <TableCell className="font-medium max-w-[12em] w-1/4">
-                <div className="flex flex-col gap-1">
-                  <span className="truncate">{coin.name}</span>
+                <Link
+                  href={`/coin/${coin.id}`}
+                  className="flex flex-col gap-0.5 rounded outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span className="truncate font-semibold text-slate-950 dark:text-white hover:text-primary transition-colors">
+                    {coin.name}
+                  </span>
                   <span className="text-xs text-muted-foreground uppercase">
                     {coin.symbol}
                   </span>
-                </div>
+                </Link>
               </TableCell>
               <TableCell className="text-right font-medium max-w-24 whitespace-nowrap">
                 ${coin.current_price.toLocaleString()}

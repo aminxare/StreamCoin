@@ -16,7 +16,6 @@ import {
     useEffect,
     useMemo,
     useRef,
-    useState,
 } from "react";
 
 const pageSize = 10;
@@ -32,11 +31,11 @@ export function useCryptoMarketOverview() {
     const { search, sortBy, sortDirection } = useAppSelector(
         (state) => state.market,
     );
-    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const observerTarget = useRef<HTMLDivElement>(null);
 
     const {
         data,
+        dataUpdatedAt,
         error,
         isLoading,
         isFetching,
@@ -56,10 +55,10 @@ export function useCryptoMarketOverview() {
         refetchInterval: 60_000,
     });
 
-    useEffect(() => {
-        if (!data) return;
-        setLastUpdated(new Date());
-    }, [data]);
+    const lastUpdated = useMemo(
+        () => (dataUpdatedAt ? new Date(dataUpdatedAt) : null),
+        [dataUpdatedAt],
+    );
 
     const coins = useMemo(() => data ? (data as InfiniteData<Coin[]>).pages.flat() : [], [data]);
 

@@ -1,5 +1,3 @@
-import { Coin } from "@/type";
-
 export function formatCurrency(value: number, compact = false): string {
   if (compact && value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
   if (compact && value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;

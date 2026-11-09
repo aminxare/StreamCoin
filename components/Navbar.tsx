@@ -10,13 +10,6 @@ import {
 import { Button } from "./ui/button";
 import { LogOut, Settings, User } from "lucide-react";
 
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/profile", label: "Profile" },
-  { href: "/settings", label: "Settings" },
-  { href: "/coin", label: "Coin Info" },
-];
-
 function AccountDropdown() {
   return (
     <DropdownMenu>
@@ -55,19 +48,10 @@ const Navbar = () => {
           <Link href="/" className="text-2xl font-semibold tracking-tight text-slate-950 transition-colors hover:text-primary dark:text-white dark:hover:text-primary">
             <span className="text-primary">Stream</span>Coin
           </Link>
-          <nav className="flex flex-wrap items-center gap-2">
-            {navItems.map((item) => (
-              <Button asChild key={item.href} variant="ghost" size="sm" className="px-3">
-                <Link href={item.href}>{item.label}</Link>
-              </Button>
-            ))}
-          </nav>
+
         </div>
 
         <div className="flex items-center gap-3">
-          <Button asChild variant="secondary" size="sm" className="hidden sm:inline-flex">
-            <Link href="/coin">View Coin Info</Link>
-          </Button>
           <AccountDropdown />
         </div>
       </div>
